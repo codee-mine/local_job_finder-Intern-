@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:local_job_finder/Utilizes/toasts_messages.dart';
 
 class EmployeeProfileScreen extends StatefulWidget {
   const EmployeeProfileScreen({super.key});
@@ -106,10 +107,6 @@ class _EmployeeProfileScreenState extends State<EmployeeProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
     return Scaffold(
       body: SafeArea(
         child: SingleChildScrollView(
@@ -158,43 +155,57 @@ class _EmployeeProfileScreenState extends State<EmployeeProfileScreen> {
         ),
         const SizedBox(width: 16),
         Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: Row(
             children: [
-              Text(
-                _profileData['fullName'] ?? 'No Name',
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                _profileData['email'] ?? '',
-                style: TextStyle(color: Colors.grey[600]),
-              ),
-              const SizedBox(height: 4),
-              Row(
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(
-                    Icons.verified,
-                    color: _profileData['emailVerified'] == true
-                        ? Colors.green
-                        : Colors.grey,
-                    size: 16,
-                  ),
-                  const SizedBox(width: 4),
                   Text(
-                    _profileData['emailVerified'] == true
-                        ? 'Verified'
-                        : 'Not Verified',
-                    style: TextStyle(
-                      color: _profileData['emailVerified'] == true
-                          ? Colors.green
-                          : Colors.grey,
+                    _profileData['fullName'] ?? 'No Name',
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
+                  const SizedBox(height: 4),
+                  Text(
+                    _profileData['email'] ?? '',
+                    style: TextStyle(color: Colors.grey[600]),
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.verified,
+                        color: _profileData['emailVerified'] == true
+                            ? Colors.green
+                            : Colors.grey,
+                        size: 16,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        _profileData['emailVerified'] == true
+                            ? 'Verified'
+                            : 'Not Verified',
+                        style: TextStyle(
+                          color: _profileData['emailVerified'] == true
+                              ? Colors.green
+                              : Colors.grey,
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
+              ),
+              Spacer(),
+              TextButton(
+                onPressed: () {
+                  SnackBarUtil.showSuccessMessage(context, 'Account Deleted');
+                },
+                child: Text(
+                  'Delete Account',
+                  style: TextStyle(color: Colors.red),
+                ),
               ),
             ],
           ),

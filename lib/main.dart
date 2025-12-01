@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:local_job_finder/login_and_registration.dart';
+import 'package:local_job_finder/employer/employer_dashboard.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -26,9 +26,8 @@ class MyApp extends StatelessWidget {
           elevation: 0,
         ),
       ),
-      home: const LoginScreen(),
+      home: const EmployerHomeScreen(),
       debugShowCheckedModeBanner: false,
     );
   }
 }
-

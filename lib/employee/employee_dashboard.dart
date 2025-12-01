@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:local_job_finder/Utilizes/internet_check.dart';
+import 'package:local_job_finder/Utilizes/toasts_messages.dart';
 import 'package:local_job_finder/employee/employee_jobs.dart';
 import 'package:local_job_finder/employee/employee_profile.dart';
 import 'package:local_job_finder/login_and_registration.dart';
@@ -13,6 +14,7 @@ class EmployeeHomeScreen extends StatefulWidget {
 
 class _EmployeeHomeScreenState extends State<EmployeeHomeScreen> {
   int _currentIndex = 1;
+  bool isLoggedIn = true;
 
   @override
   void initState() {
@@ -37,38 +39,77 @@ class _EmployeeHomeScreenState extends State<EmployeeHomeScreen> {
     );
   }
 
+  Future<void> _login() async {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => LoginScreen()),
+    );
+  }
+
+  String _getAppBarTitle() {
+    if (!isLoggedIn) {
+      return 'Job List';
+    }
+    switch (_currentIndex) {
+      case 0:
+        return 'Jobs';
+      case 1:
+        return 'Dashboard';
+      case 2:
+        return 'Profile';
+      default:
+        return 'Dashboard';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return InternetBanner(
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Dashboard'),
+          title: Text(_getAppBarTitle()),
           centerTitle: true,
           scrolledUnderElevation: 0,
           actions: [
             IconButton(
               icon: const Icon(Icons.notifications_outlined),
               onPressed: () {
-                // Handle notifications
+                SnackBarUtil.showSuccessMessage(context, 'Notifications');
               },
             ),
+
             PopupMenuButton<String>(
               onSelected: (value) {
                 if (value == 'logout') {
                   _logout();
                 }
+                if (value == 'login') {
+                  _login();
+                }
               },
               itemBuilder: (BuildContext context) => [
-                const PopupMenuItem<String>(
-                  value: 'logout',
-                  child: Row(
-                    children: [
-                      Icon(Icons.logout, color: Colors.red),
-                      SizedBox(width: 8),
-                      Text('Logout'),
-                    ],
+                if (isLoggedIn)
+                  PopupMenuItem<String>(
+                    value: 'logout',
+                    child: Row(
+                      children: [
+                        Icon(Icons.logout, color: Colors.red),
+                        SizedBox(width: 8),
+                        Text('Logout'),
+                      ],
+                    ),
                   ),
-                ),
+                if (!isLoggedIn)
+                  PopupMenuItem<String>(
+                    value: 'login',
+                    child: Row(
+                      children: [
+                        Icon(Icons.logout, color: Colors.blue),
+                        SizedBox(width: 8),
+                        Text('Login'),
+                      ],
+                    ),
+                  ),
               ],
             ),
           ],
@@ -78,7 +119,10 @@ class _EmployeeHomeScreenState extends State<EmployeeHomeScreen> {
           currentIndex: _currentIndex,
           onTap: _onTabTapped,
           items: const [
-            BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Search'),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.work_history),
+              label: 'Saved Jobs',
+            ),
             BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
             BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
           ],
@@ -90,7 +134,7 @@ class _EmployeeHomeScreenState extends State<EmployeeHomeScreen> {
   Widget _buildCurrentIndexTab() {
     switch (_currentIndex) {
       case 0:
-        return _buildSearchTab();
+        return _buildJobTab();
       case 1:
         return _buildHomeTab();
       case 2:
@@ -100,8 +144,8 @@ class _EmployeeHomeScreenState extends State<EmployeeHomeScreen> {
     }
   }
 
-  Widget _buildSearchTab() {
-    return EmployeeSearchScreen();
+  Widget _buildJobTab() {
+    return EmployeeJobsScreen();
   }
 
   Widget _buildHomeTab() {

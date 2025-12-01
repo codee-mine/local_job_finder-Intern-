@@ -1,17 +1,15 @@
-
 import 'package:flutter/material.dart';
 
-class EmployeeSearchScreen extends StatefulWidget {
-  const EmployeeSearchScreen({super.key});
+class EmployeeJobsScreen extends StatefulWidget {
+  const EmployeeJobsScreen({super.key});
 
   @override
-  State<EmployeeSearchScreen> createState() => _EmployeeSearchScreenState();
+  State<EmployeeJobsScreen> createState() => _EmployeeJobsScreenState();
 }
 
-class _EmployeeSearchScreenState extends State<EmployeeSearchScreen> {
+class _EmployeeJobsScreenState extends State<EmployeeJobsScreen> {
   @override
   Widget build(BuildContext context) {
-    return Scaffold(body: Center(child: Text('Search')));
+    return Scaffold(body: Center(child: Text('Applied or saved Jobs')));
   }
 }
-

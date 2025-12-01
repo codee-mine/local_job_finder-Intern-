@@ -15,6 +15,7 @@ class EmployerHomeScreen extends StatefulWidget {
 
 class _EmployerHomeScreenState extends State<EmployerHomeScreen> {
   int _currentIndex = 1;
+  bool isLoggedIn = true;
 
   @override
   void initState() {
@@ -101,7 +102,10 @@ class _EmployerHomeScreenState extends State<EmployerHomeScreen> {
           currentIndex: _currentIndex,
           onTap: _onTabTapped,
           items: const [
-            BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Jobs'),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.work_history),
+              label: 'Jobs',
+            ),
             BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
             BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
           ],
@@ -124,7 +128,7 @@ class _EmployerHomeScreenState extends State<EmployerHomeScreen> {
   }
 
   Widget _buildJobTab() {
-    return EmployerSearchScreen();
+    return EmployerPostedJobsScreen();
   }
 
   Widget _buildHomeContent() {
@@ -135,7 +139,6 @@ class _EmployerHomeScreenState extends State<EmployerHomeScreen> {
     return EmployerProfileScreen();
   }
 }
-
 
 class EmployerHomeContent extends StatefulWidget {
   const EmployerHomeContent({super.key});
