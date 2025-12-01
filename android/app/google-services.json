@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "876714585236",
+    "project_id": "localjobfinder-57d6a",
+    "storage_bucket": "localjobfinder-57d6a.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:876714585236:android:d0757629e6a94e7336d881",
+        "android_client_info": {
+          "package_name": "com.example.local_job_finder"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCOxHRlG-GR7n2B61AymLdb4fn4-SQ0mus"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

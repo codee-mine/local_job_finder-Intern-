@@ -36,6 +36,11 @@ dependencies:
   cupertino_icons: ^1.0.8
   firebase_core: ^4.2.1
   connectivity_plus: ^7.0.0
+  firebase_auth: ^6.1.2
+  dropdown_button2: ^2.3.9
+  http: ^1.6.0
+  shared_preferences: ^2.5.3
+  provider: ^6.1.5+1
 
 dev_dependencies:
   flutter_test:
