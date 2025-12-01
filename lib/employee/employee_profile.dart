@@ -169,6 +169,10 @@ class _EmployeeProfileScreenState extends State<EmployeeProfileScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
+                    'Member Since: ${_formatTimestamp(_profileData['createdAt'])}',
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
                     _profileData['email'] ?? '',
                     style: TextStyle(color: Colors.grey[600]),
                   ),
@@ -237,11 +241,6 @@ class _EmployeeProfileScreenState extends State<EmployeeProfileScreen> {
           'Skills',
           _profileData['skills']?.join(', ') ?? 'Not provided',
           Icons.work,
-        ),
-        _buildInfoItem(
-          'Member since',
-          _formatTimestamp(_profileData['createdAt']),
-          Icons.calendar_today,
         ),
       ],
     );

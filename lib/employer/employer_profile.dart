@@ -16,17 +16,18 @@ class _EmployerProfileScreenState extends State<EmployerProfileScreen> {
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _locationController = TextEditingController();
-  final TextEditingController _skillsController = TextEditingController();
+  final TextEditingController _websiteController = TextEditingController();
+  final TextEditingController _descriptionController = TextEditingController();
 
   String? _nameError;
   String? _phoneError;
   String? _locationError;
-  String? _skillsError;
+  String? _websiteError;
 
   bool _nameValidated = false;
   bool _phoneValidated = false;
   bool _locationValidated = false;
-  bool _skillsValidated = false;
+  bool _websiteValidated = false;
 
   @override
   void initState() {
@@ -71,15 +72,17 @@ class _EmployerProfileScreenState extends State<EmployerProfileScreen> {
     }
   }
 
-  void _validateSkills() {
-    if (!_skillsValidated) return;
-    final value = _skillsController.text.trim();
+  void _validatewebsite() {
+    if (!_websiteValidated) return;
+    final value = _websiteController.text.trim();
+    final urlPattern = r'^(https?:\/\/)?[\w\-]+(\.[\w\-]+)+[/#?]?.*$';
+    final regExp = RegExp(urlPattern);
     if (value.isEmpty) {
-      _skillsError = 'Please enter at least one skill';
-    } else if (value.split(',').isEmpty) {
-      _skillsError = 'Please enter at least one skill (comma separated)';
+      _websiteError = 'Please enter your valid website';
+    } else if (!regExp.hasMatch(value)) {
+      _websiteError = 'Please enter your website if available';
     } else {
-      _skillsError = null;
+      _websiteError = null;
     }
   }
 
@@ -91,17 +94,17 @@ class _EmployerProfileScreenState extends State<EmployerProfileScreen> {
       _nameController.text = _profileData['fullName'] ?? '';
       _phoneController.text = _profileData['phone'] ?? '';
       _locationController.text = _profileData['location'] ?? '';
-      _skillsController.text = _profileData['skills']?.join(', ') ?? '';
+      _websiteController.text = _profileData['website'] ?? '';
 
       // Reset validation states and errors
       _nameValidated = false;
       _phoneValidated = false;
       _locationValidated = false;
-      _skillsValidated = false;
+      _websiteValidated = false;
       _nameError = null;
       _phoneError = null;
       _locationError = null;
-      _skillsError = null;
+      _websiteError = null;
     });
   }
 
@@ -173,6 +176,10 @@ class _EmployerProfileScreenState extends State<EmployerProfileScreen> {
                     style: TextStyle(color: Colors.grey[600]),
                   ),
                   const SizedBox(height: 4),
+                  Text(
+                    'Member Since: ${_formatTimestamp(_profileData['createdAt'])}',
+                  ),
+                  const SizedBox(height: 4),
                   Row(
                     children: [
                       Icon(
@@ -234,14 +241,9 @@ class _EmployerProfileScreenState extends State<EmployerProfileScreen> {
           Icons.location_on,
         ),
         _buildInfoItem(
-          'Skills',
-          _profileData['skills']?.join(', ') ?? 'Not provided',
-          Icons.work,
-        ),
-        _buildInfoItem(
-          'Member since',
-          _formatTimestamp(_profileData['createdAt']),
-          Icons.calendar_today,
+          'website',
+          _profileData['website']?.join(', ') ?? 'Not provided',
+          Icons.public,
         ),
       ],
     );
@@ -300,17 +302,17 @@ class _EmployerProfileScreenState extends State<EmployerProfileScreen> {
         ),
         const SizedBox(height: 16),
         _buildEditField(
-          'Skills (comma separated) *',
-          _skillsController,
-          Icons.work,
-          _skillsError,
-          _skillsValidated,
+          'Website URL',
+          _websiteController,
+          Icons.public,
+          _websiteError,
+          _websiteValidated,
           onChanged: (value) {
-            if (_skillsValidated) _validateSkills();
+            if (_websiteValidated) _validatewebsite();
           },
           onTap: () {
-            if (!_skillsValidated) {
-              setState(() => _skillsValidated = true);
+            if (!_websiteValidated) {
+              setState(() => _websiteValidated = true);
             }
           },
           maxLines: 2,
