@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:local_job_finder/employer/employer_dashboard.dart';
+import 'package:local_job_finder/employee/employee_dashboard.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -26,7 +26,7 @@ class MyApp extends StatelessWidget {
           elevation: 0,
         ),
       ),
-      home: const EmployerHomeScreen(),
+      home: const EmployeeHomeScreen(),
       debugShowCheckedModeBanner: false,
     );
   }

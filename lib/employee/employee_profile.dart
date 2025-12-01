@@ -105,21 +105,60 @@ class _EmployeeProfileScreenState extends State<EmployeeProfileScreen> {
     });
   }
 
+  bool _validateAllFields() {
+    setState(() {
+      _nameValidated = true;
+      _phoneValidated = true;
+      _locationValidated = true;
+      _skillsValidated = true;
+    });
+
+    _validateName();
+    _validatePhone();
+    _validateLocation();
+    _validateSkills();
+
+    return _nameError == null &&
+        _phoneError == null &&
+        _locationError == null &&
+        _skillsError == null;
+  }
+
+  Future<void> _saveEditProfiledata() async {
+    if (!_validateAllFields()) {
+      SnackBarUtil.showErrorMessage(context, 'Please fill al required fields.');
+      return;
+    }
+
+    try {
+      SnackBarUtil.showSuccessMessage(context, 'Profile updated successfully.');
+    } catch (e) {
+      SnackBarUtil.showErrorMessage(context, 'Failed to updated. Try again');
+    }
+  }
+
+  Future<void> _refreshData() async {
+    SnackBarUtil.showInfoMessage(context, 'Refreshed');
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            children: [
-              _buildProfileHeader(),
-              const SizedBox(height: 24),
-              _isEditing ? _buildEditForm() : _buildProfileInfo(),
-              const SizedBox(height: 20),
-              _buildActionButtons(),
-            ],
+        child: RefreshIndicator(
+          onRefresh: _refreshData,
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: [
+                _buildProfileHeader(),
+                const SizedBox(height: 24),
+                _isEditing ? _buildEditForm() : _buildProfileInfo(),
+                const SizedBox(height: 20),
+                _buildActionButtons(),
+              ],
+            ),
           ),
         ),
       ),
@@ -409,8 +448,9 @@ class _EmployeeProfileScreenState extends State<EmployeeProfileScreen> {
       children: [
         Expanded(
           child: ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               if (_isEditing) {
+                _saveEditProfiledata();
               } else {
                 setState(() {
                   _isEditing = true;

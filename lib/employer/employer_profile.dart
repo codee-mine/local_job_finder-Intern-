@@ -23,11 +23,13 @@ class _EmployerProfileScreenState extends State<EmployerProfileScreen> {
   String? _phoneError;
   String? _locationError;
   String? _websiteError;
+  String? _descriptionError;
 
   bool _nameValidated = false;
   bool _phoneValidated = false;
   bool _locationValidated = false;
   bool _websiteValidated = false;
+  bool _descriptionValidated = false;
 
   @override
   void initState() {
@@ -78,11 +80,24 @@ class _EmployerProfileScreenState extends State<EmployerProfileScreen> {
     final urlPattern = r'^(https?:\/\/)?[\w\-]+(\.[\w\-]+)+[/#?]?.*$';
     final regExp = RegExp(urlPattern);
     if (value.isEmpty) {
-      _websiteError = 'Please enter your valid website';
+      _websiteError = null;
+      return;
     } else if (!regExp.hasMatch(value)) {
-      _websiteError = 'Please enter your website if available';
+      _websiteError = 'Please enter a valid website URL';
     } else {
       _websiteError = null;
+    }
+  }
+
+  void _validateDescription() {
+    if (!_locationValidated) return;
+    final value = _descriptionController.text.trim();
+    if (value.isEmpty) {
+      _descriptionError = 'Please enter about your Company';
+    } else if (value.length < 2) {
+      _descriptionError = 'Description must be at least 100 characters long';
+    } else {
+      _descriptionError = null;
     }
   }
 
@@ -95,34 +110,79 @@ class _EmployerProfileScreenState extends State<EmployerProfileScreen> {
       _phoneController.text = _profileData['phone'] ?? '';
       _locationController.text = _profileData['location'] ?? '';
       _websiteController.text = _profileData['website'] ?? '';
+      _descriptionController.text = _profileData['description'] ?? '';
 
       // Reset validation states and errors
       _nameValidated = false;
       _phoneValidated = false;
       _locationValidated = false;
       _websiteValidated = false;
+      _descriptionValidated = false;
       _nameError = null;
       _phoneError = null;
       _locationError = null;
       _websiteError = null;
+      _descriptionError = null;
     });
+  }
+
+  bool _validateAllFields() {
+    setState(() {
+      _nameValidated = true;
+      _phoneValidated = true;
+      _locationValidated = true;
+      _websiteValidated = true;
+      _descriptionValidated = true;
+    });
+
+    _validateName();
+    _validatePhone();
+    _validateLocation();
+    _validatewebsite();
+    _validateDescription();
+
+    return _nameError == null &&
+        _phoneError == null &&
+        _locationError == null &&
+        _websiteError == null &&
+        _descriptionError == null;
+  }
+
+  void _saveEditProfileData() {
+    if (!_validateAllFields()) {
+      SnackBarUtil.showErrorMessage(context, 'Please fill all required fields');
+      return;
+    }
+
+    try {
+      SnackBarUtil.showSuccessMessage(context, 'Updated');
+    } catch (e) {
+      SnackBarUtil.showErrorMessage(context, 'Update Failed');
+    }
+  }
+
+  Future<void> _refreshData() async {
+    SnackBarUtil.showInfoMessage(context, 'Refreshed');
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            children: [
-              _buildProfileHeader(),
-              const SizedBox(height: 24),
-              _isEditing ? _buildEditForm() : _buildProfileInfo(),
-              const SizedBox(height: 20),
-              _buildActionButtons(),
-            ],
+        child: RefreshIndicator(
+          onRefresh: _refreshData,
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: [
+                _buildProfileHeader(),
+                const SizedBox(height: 24),
+                _isEditing ? _buildEditForm() : _buildProfileInfo(),
+                const SizedBox(height: 20),
+                _buildActionButtons(),
+              ],
+            ),
           ),
         ),
       ),
@@ -172,12 +232,12 @@ class _EmployerProfileScreenState extends State<EmployerProfileScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    _profileData['email'] ?? '',
-                    style: TextStyle(color: Colors.grey[600]),
+                    'Member Since: ${_formatTimestamp(_profileData['createdAt'])}',
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Member Since: ${_formatTimestamp(_profileData['createdAt'])}',
+                    _profileData['email'] ?? '',
+                    style: TextStyle(color: Colors.grey[600]),
                   ),
                   const SizedBox(height: 4),
                   Row(
@@ -242,8 +302,13 @@ class _EmployerProfileScreenState extends State<EmployerProfileScreen> {
         ),
         _buildInfoItem(
           'website',
-          _profileData['website']?.join(', ') ?? 'Not provided',
+          _profileData['website'] ?? 'Not provided',
           Icons.public,
+        ),
+        _buildInfoItem(
+          'Description',
+          _profileData['description'] ?? 'Not provided',
+          Icons.description,
         ),
       ],
     );
@@ -315,7 +380,24 @@ class _EmployerProfileScreenState extends State<EmployerProfileScreen> {
               setState(() => _websiteValidated = true);
             }
           },
-          maxLines: 2,
+        ),
+
+        const SizedBox(height: 16),
+        _buildEditField(
+          'Description',
+          _descriptionController,
+          Icons.description,
+          _descriptionError,
+          _descriptionValidated,
+          onChanged: (value) {
+            if (_descriptionValidated) _validateDescription();
+          },
+          onTap: () {
+            if (!_descriptionValidated) {
+              setState(() => _descriptionValidated = true);
+            }
+          },
+          maxLines: 5,
         ),
       ],
     );
@@ -375,6 +457,12 @@ class _EmployerProfileScreenState extends State<EmployerProfileScreen> {
         const SizedBox(height: 8),
         TextFormField(
           controller: controller,
+          validator: (value) {
+            if (value == null || value.isEmpty) {
+              return 'This field is required';
+            }
+            return null;
+          },
           decoration: InputDecoration(
             prefixIcon: Icon(icon),
             border: OutlineInputBorder(
@@ -414,6 +502,7 @@ class _EmployerProfileScreenState extends State<EmployerProfileScreen> {
           child: ElevatedButton(
             onPressed: () {
               if (_isEditing) {
+                _saveEditProfileData();
               } else {
                 setState(() {
                   _isEditing = true;

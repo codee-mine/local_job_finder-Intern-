@@ -14,7 +14,7 @@ class EmployeeHomeScreen extends StatefulWidget {
 
 class _EmployeeHomeScreenState extends State<EmployeeHomeScreen> {
   int _currentIndex = 1;
-  bool isLoggedIn = true;
+  bool isLoggedIn = false;
 
   @override
   void initState() {
