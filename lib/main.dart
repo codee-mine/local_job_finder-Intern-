@@ -12,7 +12,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'A Tour app',
+      title: 'Job Finder',
       theme: ThemeData(
         primaryColor: const Color.fromARGB(255, 6, 79, 205),
         colorScheme: ColorScheme.fromSwatch().copyWith(
