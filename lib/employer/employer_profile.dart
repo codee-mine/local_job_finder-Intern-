@@ -267,7 +267,7 @@ class _EmployerProfileScreenState extends State<EmployerProfileScreen> {
               Spacer(),
               TextButton(
                 onPressed: () {
-                  SnackBarUtil.showSuccessMessage(context, 'Account Deleted');
+                  _showDeleteAccountDialog(context);
                 },
                 child: Text(
                   'Delete Account',
@@ -278,6 +278,159 @@ class _EmployerProfileScreenState extends State<EmployerProfileScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  void _showDeleteAccountDialog(BuildContext context) {
+    final TextEditingController passwordController = TextEditingController();
+    final FocusNode passwordFocus = FocusNode();
+    bool isError = false;
+    String? passwordError;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (dialogContext, setDialogState) {
+            void validatePassword(String value) {
+              setDialogState(() {
+                if (value.isEmpty) {
+                  passwordError = 'Password is required';
+                  isError = true;
+                } else if (value.length < 6) {
+                  passwordError = 'Password must be at least 6 characters';
+                  isError = true;
+                } else {
+                  passwordError = null;
+                  isError = false;
+                }
+              });
+            }
+
+            void deleteAccount() {
+              final password = passwordController.text.trim();
+
+              if (password.isEmpty) {
+                setDialogState(() {
+                  passwordError = 'Password is required';
+                  isError = true;
+                  passwordFocus.requestFocus();
+                });
+                return;
+              }
+
+              Navigator.pop(dialogContext);
+              SnackBarUtil.showSuccessMessage(
+                context,
+                'Account deletion request submitted',
+              );
+            }
+
+            return AlertDialog(
+              title: Text(
+                'Delete Account?',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.red),
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Are you sure you want to delete your account? This action cannot be undone.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.grey.shade700),
+                  ),
+                  SizedBox(height: 20),
+                  TextFormField(
+                    controller: passwordController,
+                    focusNode: passwordFocus,
+                    obscureText: true,
+                    decoration: InputDecoration(
+                      labelText: 'Confirm your password',
+                      hintText: 'Enter your password',
+                      prefixIcon: Icon(Icons.lock_outline),
+                      suffixIcon: passwordController.text.isNotEmpty
+                          ? IconButton(
+                              onPressed: () {
+                                passwordController.clear();
+                                validatePassword('');
+                              },
+                              icon: Icon(Icons.clear),
+                            )
+                          : null,
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(color: Colors.grey.shade300),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(
+                          color: Theme.of(context).primaryColor,
+                        ),
+                      ),
+                      errorBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(color: Colors.red),
+                      ),
+                      focusedErrorBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(color: Colors.red),
+                      ),
+                      errorText: passwordError,
+                    ),
+                    onChanged: (value) {
+                      validatePassword(value);
+                    },
+                    onFieldSubmitted: (value) {
+                      if (!isError) {
+                        deleteAccount();
+                      }
+                    },
+                  ),
+                  SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.warning_amber_outlined,
+                        size: 16,
+                        color: Colors.orange,
+                      ),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'All your data will be permanently deleted',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.orange.shade700,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    passwordController.dispose();
+                    passwordFocus.dispose();
+                    Navigator.pop(dialogContext);
+                  },
+                  child: Text('Cancel'),
+                ),
+                TextButton(
+                  onPressed: isError ? null : deleteAccount,
+                  style: TextButton.styleFrom(
+                    foregroundColor: Colors.red,
+                    disabledForegroundColor: Colors.red.withValues(alpha: 0.5),
+                  ),
+                  child: Text('Delete Account'),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:local_job_finder/employee/employee_dashboard.dart';
+import 'package:local_job_finder/employer/employer_dashboard.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

@@ -1,8 +1,10 @@
 // Registration
 import 'package:dropdown_button2/dropdown_button2.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:local_job_finder/Utilizes/internet_check.dart';
 import 'package:local_job_finder/Utilizes/toasts_messages.dart';
+import 'package:local_job_finder/employee/employee_dashboard.dart';
 
 class RegistrationScreen extends StatefulWidget {
   const RegistrationScreen({super.key});
@@ -139,12 +141,10 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     });
 
     try {
-     
-
       SnackBarUtil.showSuccessMessage(
-          context,
-          'Registration successful! Please check your email for verification link.',
-        );
+        context,
+        'Registration successful! Please check your email for verification link.',
+      );
     } catch (e) {
       SnackBarUtil.showErrorMessage(
         context,
@@ -729,6 +729,140 @@ class _LoginScreenState extends State<LoginScreen> {
     return _roleError == null && _emailError == null && _passwordError == null;
   }
 
+  void _navigateToVerificationScreen() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => VerificationScreen()),
+    );
+    SnackBarUtil.showInfoMessage(context, 'Verification sent.');
+  }
+
+  Future<void> _forgotPasswordAlert(BuildContext context) async {
+    final TextEditingController emailControllerInForgetPassword =
+        TextEditingController();
+    String? emailErrorInForgetPassword;
+    bool emailValidated = false;
+
+    emailControllerInForgetPassword.addListener(() {});
+
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            final hasError = emailErrorInForgetPassword != null;
+            return AlertDialog(
+              title: Text(
+                'Forgot password ?',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.red),
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text('Enter your registered email to reset password.'),
+                  const SizedBox(height: 10),
+                  TextFormField(
+                    controller: emailControllerInForgetPassword,
+                    decoration: InputDecoration(
+                      hintText: 'Enter registered email',
+                      prefixIcon: Icon(Icons.email_outlined),
+                      suffixIcon:
+                          emailControllerInForgetPassword.text.isNotEmpty
+                          ? IconButton(
+                              onPressed: () {
+                                emailControllerInForgetPassword.clear();
+                                setState(() {});
+                              },
+                              icon: Icon(Icons.clear),
+                            )
+                          : null,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(
+                          color: hasError ? Colors.red : Colors.grey.shade300,
+                        ),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(
+                          color: hasError ? Colors.red : Colors.grey.shade300,
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(
+                          color: hasError ? Colors.red : Colors.grey.shade300,
+                        ),
+                      ),
+                      errorText: emailErrorInForgetPassword,
+                    ),
+                    onChanged: (value) {
+                      if (!emailValidated) return;
+
+                      setState(() {
+                        if (value.isEmpty) {
+                          emailErrorInForgetPassword =
+                              'Please enter registered email address.';
+                        } else if (!value.contains('@')) {
+                          emailErrorInForgetPassword = 'Invalid email';
+                        } else {
+                          emailErrorInForgetPassword = null;
+                        }
+                      });
+                    },
+
+                    onTap: () {
+                      if (!emailValidated) {
+                        setState(() => emailValidated = true);
+                      }
+                    },
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                  },
+                  child: Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    setState(() {
+                      if (emailControllerInForgetPassword.text.isEmpty) {
+                        emailErrorInForgetPassword =
+                            'Please enter registered email address.';
+                      } else if (!emailControllerInForgetPassword.text.contains(
+                        '@',
+                      )) {
+                        emailErrorInForgetPassword = 'Invalid email';
+                      } else {
+                        emailErrorInForgetPassword = null;
+                        Navigator.pop(context);
+                        _navigateToVerificationScreen();
+                        FocusScope.of(context).unfocus();
+                      }
+                    });
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: Text('Reset'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   // login
   Future<void> _login() async {
     if (!_validateAllFields()) {
@@ -843,7 +977,6 @@ class _LoginScreenState extends State<LoginScreen> {
       ],
     );
   }
-
 
   Widget _buildEmailField(Color primaryColor) {
     final hasError = _emailError != null && _emailValidated;
@@ -1039,7 +1172,9 @@ class _LoginScreenState extends State<LoginScreen> {
     return Align(
       alignment: Alignment.centerRight,
       child: TextButton(
-        onPressed: () {},
+        onPressed: () {
+          _forgotPasswordAlert(context);
+        },
         child: const Text(
           'Forgot Password?',
           style: TextStyle(fontWeight: FontWeight.w500),
@@ -1156,6 +1291,387 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
       ],
+    );
+  }
+}
+
+class VerificationScreen extends StatefulWidget {
+  const VerificationScreen({super.key});
+
+  @override
+  State<VerificationScreen> createState() => _VerificationScreenState();
+}
+
+class _VerificationScreenState extends State<VerificationScreen> {
+  final List<TextEditingController> _inputController = List.generate(
+    6,
+    (_) => TextEditingController(),
+  );
+  final List<FocusNode> _focusNode = List.generate(6, (_) => FocusNode());
+  final List<String> _otp = List.filled(6, '');
+  bool _isError = false;
+  String _errorMessage = '';
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _setupFocusListeners();
+  }
+
+  void _setupFocusListeners() {
+    for (int i = 0; i < _focusNode.length; i++) {
+      _focusNode[i].addListener(() {
+        if (!_focusNode[i].hasFocus && _inputController[i].text.isEmpty) {
+          _isError = true;
+          _errorMessage = 'Please verify your OTP';
+          setState(() {});
+        }
+      });
+    }
+  }
+
+  void _onChanged(String value, int index) {
+    if (_isError) {
+      _isError = false;
+      _errorMessage = '';
+    }
+
+    if (value.length <= 1) {
+      _otp[index] = value;
+    }
+
+    if (value.isNotEmpty && index < 5) {
+      _focusNode[index + 1].requestFocus();
+    }
+
+    if (value.isEmpty && index > 0) {
+      _focusNode[index - 1].requestFocus();
+    }
+
+    if (_otp.every((digit) => digit.isNotEmpty) && index == 5) {
+      _verifyOtp;
+    }
+
+    setState(() {});
+  }
+
+  void _verifyOtp() async {
+    if (_isLoading) return;
+    final enteredOtp = _otp.join();
+
+    if (enteredOtp.length != 6) {
+      setState(() {
+        _isError = true;
+        _errorMessage = 'Please enter all 6 digits';
+      });
+      return;
+    }
+
+    if (!RegExp(r'^\d+$').hasMatch(enteredOtp)) {
+      setState(() {
+        _isError = true;
+        _errorMessage = 'OTP should contain only numbers';
+      });
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _isError = false;
+      _errorMessage = '';
+    });
+
+    try {
+      await Future.delayed(const Duration(seconds: 2));
+
+      setState(() {
+        _isLoading = false;
+      });
+
+      if (enteredOtp == '123456') {
+        SnackBarUtil.showSuccessMessage(context, 'OTP Verified');
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => EmployeeHomeScreen()),
+          (route) => false,
+        );
+        _isError = false;
+        _errorMessage = '';
+        _clearAllFields();
+      } else {
+        setState(() {
+          _isError = true;
+          _errorMessage = 'Invalid OTP. Please try again';
+          _clearAllFields();
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+        _isError = true;
+        _errorMessage = 'Network error. Please try again';
+      });
+    }
+  }
+
+  void _clearAllFields() {
+    for (var controller in _inputController) {
+      controller.clear();
+    }
+
+    for (var node in _focusNode) {
+      node.unfocus();
+    }
+
+    _focusNode[0].requestFocus();
+    _otp.fillRange(0, 6, '');
+    setState(() {});
+  }
+
+  void _onPaste(String value) {
+    final digits = value.replaceAll(RegExp(r'[^0-9]'), '');
+
+    if (digits.length >= 6) {
+      for (int i = 0; i < 6; i++) {
+        _inputController[i].text = digits[i];
+        _otp[i] = digits[i];
+      }
+      _focusNode[5].requestFocus();
+      _verifyOtp();
+    }
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+    for (var controlle in _inputController) {
+      controlle.dispose();
+    }
+
+    for (var node in _focusNode) {
+      node.dispose();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(),
+      body: SafeArea(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                SizedBox(height: 60),
+                Text(
+                  'OTP Verification',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).primaryColor,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(height: 10),
+                Text(
+                  'Enter your OTP to verify your account.',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey.shade600,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(height: 40),
+                Padding(
+                  padding: const EdgeInsets.all(28.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: List.generate(6, (index) {
+                      return SizedBox(
+                        width: 50,
+                        height: 60,
+                        child: TextField(
+                          controller: _inputController[index],
+                          focusNode: _focusNode[index],
+                          textAlign: TextAlign.center,
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                            LengthLimitingTextInputFormatter(1),
+                          ],
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          decoration: InputDecoration(
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(
+                                color: _isError
+                                    ? Colors.red
+                                    : Colors.grey.shade300,
+                                width: 2,
+                              ),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(
+                                color: _isError
+                                    ? Colors.red
+                                    : Colors.grey.shade300,
+                                width: 2,
+                              ),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(
+                                color: _isError
+                                    ? Colors.red
+                                    : Theme.of(context).primaryColor,
+                                width: 2,
+                              ),
+                            ),
+                            filled: true,
+                            fillColor: _isError
+                                ? Colors.red.shade50
+                                : Colors.grey.shade50,
+                            contentPadding: EdgeInsets.zero,
+                            counterText: '',
+                          ),
+                          onChanged: (value) => _onChanged(value, index),
+                          onTap: () {
+                            if (_isError) {
+                              _isError = false;
+                              _errorMessage = '';
+                              setState(() {});
+                            }
+                          },
+                        ),
+                      );
+                    }),
+                  ),
+                ),
+
+                if (_isError) ...[
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.error_outline, color: Colors.red, size: 18),
+                      const SizedBox(width: 8),
+                      Text(
+                        _errorMessage,
+                        style: TextStyle(color: Colors.red, fontSize: 14),
+                      ),
+                    ],
+                  ),
+                ],
+
+                const SizedBox(height: 10),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    ElevatedButton.icon(
+                      onPressed: () async {
+                        final clipBoardData = await Clipboard.getData(
+                          Clipboard.kTextPlain,
+                        );
+                        if (clipBoardData?.text != null) {
+                          _onPaste(clipBoardData!.text!);
+                        }
+                        FocusScope.of(context).unfocus();
+                      },
+
+                      icon: Icon(Icons.paste),
+                      label: Text('Paste otp'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.grey.shade200,
+                        foregroundColor: Colors.grey.shade800,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    ElevatedButton.icon(
+                      onPressed: _clearAllFields,
+
+                      icon: Icon(Icons.clear),
+                      label: Text('Clear'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.grey.shade200,
+                        foregroundColor: Colors.grey.shade800,
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 30),
+                SizedBox(
+                  width: double.infinity,
+                  height: 56,
+                  child: ElevatedButton(
+                    onPressed: _isLoading ? null : _verifyOtp,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Theme.of(context).primaryColor,
+                    ),
+                    child: _isLoading
+                        ? Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                ),
+                              ),
+                              SizedBox(width: 10),
+                              Text('Verifying..'),
+                            ],
+                          )
+                        : Text(
+                            'Verify OTP',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                  ),
+                ),
+                const SizedBox(height: 60),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      "Didn't receive otp?",
+                      style: TextStyle(color: Colors.green.shade600),
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        _clearAllFields();
+                        SnackBarUtil.showSuccessMessage(
+                          context,
+                          'OTP resent successfully',
+                        );
+                      },
+                      child: Text(
+                        'Resend OTP',
+                        style: TextStyle(
+                          color: Theme.of(context).primaryColor,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
