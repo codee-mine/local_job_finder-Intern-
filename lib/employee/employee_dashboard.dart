@@ -200,7 +200,7 @@ class _EmployeeHomeScreenState extends State<EmployeeHomeScreen> {
   @override
   void initState() {
     super.initState();
-    isLoggedIn = widget.initialLoggedIn ?? true;
+    isLoggedIn = widget.initialLoggedIn ?? false;
     if (!isLoggedIn) {
       _currentIndex = 1;
     }

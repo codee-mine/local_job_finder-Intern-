@@ -4,7 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:local_job_finder/Utilizes/internet_check.dart';
 import 'package:local_job_finder/Utilizes/toasts_messages.dart';
+import 'package:local_job_finder/auth/api_service.dart';
+import 'package:local_job_finder/auth/auth_service.dart';
 import 'package:local_job_finder/employee/employee_dashboard.dart';
+import 'package:local_job_finder/employer/employer_dashboard.dart';
 
 class RegistrationScreen extends StatefulWidget {
   const RegistrationScreen({super.key});
@@ -14,26 +17,30 @@ class RegistrationScreen extends StatefulWidget {
 }
 
 class _RegistrationScreenState extends State<RegistrationScreen> {
+  final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
 
+  final _nameFocusNode = FocusNode();
   final _emailFocusNode = FocusNode();
   final _passwordFocusNode = FocusNode();
   final _confirmPasswordFocusNode = FocusNode();
 
-  final List<String> _roleOptions = ['Employee', 'Employer'];
+  final List<String> _roleOptions = ['employee', 'employer'];
   String? _selectedRole;
 
   bool _isLoading = false;
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
 
+  String? _nameError;
   String? _roleError;
   String? _emailError;
   String? _passwordError;
   String? _confirmPasswordError;
 
+  bool _nameValidated = false;
   bool _roleValidated = false;
   bool _emailValidated = false;
   bool _passwordValidated = false;
@@ -79,6 +86,16 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     }
   }
 
+  void _validateName() {
+    if (!_nameValidated) return;
+    final value = _nameController.text;
+    if (value.isEmpty) {
+      _nameError = 'Please enter your email';
+    } else {
+      _nameError = null;
+    }
+  }
+
   void _validatePassword() {
     if (!_passwordValidated) return;
     final value = _passwordController.text;
@@ -105,18 +122,21 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
 
   bool _validateAllFields() {
     setState(() {
+      _nameValidated = true;
       _roleValidated = true;
       _emailValidated = true;
       _passwordValidated = true;
       _confirmPasswordValidated = true;
     });
 
+    _validateName();
     _validateRole();
     _validateEmail();
     _validatePassword();
     _validateConfirmPassword();
 
-    return _roleError == null &&
+    return _nameError == null &&
+        _roleError == null &&
         _emailError == null &&
         _passwordError == null &&
         _confirmPasswordError == null;
@@ -141,10 +161,24 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     });
 
     try {
-      SnackBarUtil.showSuccessMessage(
-        context,
-        'Registration successful! Please check your email for verification link.',
+      final result = await ApiService().registerUser(
+        _nameController.text,
+        _emailController.text.trim(),
+        _passwordController.text,
+        _selectedRole!,
       );
+
+      if (result['statusCode'] == 201) {
+        _nameController.clear();
+        _emailController.clear();
+        _passwordController.clear();
+        SnackBarUtil.showSuccessMessage(context, 'Registration successful!');
+      } else {
+        SnackBarUtil.showErrorMessage(
+          context,
+          result['body']['errors']?.toString() ?? 'Registration failed.',
+        );
+      }
     } catch (e) {
       SnackBarUtil.showErrorMessage(
         context,
@@ -251,6 +285,8 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
       children: [
         _buildRoleDropdown(),
         const SizedBox(height: 16),
+        _buildNameField(primaryColor),
+        const SizedBox(height: 16),
         _buildEmailField(primaryColor),
         const SizedBox(height: 16),
         _buildPasswordField(primaryColor),
@@ -336,6 +372,76 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
               style: const TextStyle(color: Colors.red, fontSize: 12),
             ),
           ),
+      ],
+    );
+  }
+
+  Widget _buildNameField(Color primaryColor) {
+    final hasError = _nameError != null && _nameValidated;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Name *',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
+            color: Colors.black87,
+          ),
+        ),
+        const SizedBox(height: 8),
+        TextFormField(
+          controller: _nameController,
+          focusNode: _nameFocusNode,
+          decoration: InputDecoration(
+            hintText: 'Enter your name',
+            prefixIcon: const Icon(Icons.email_outlined),
+            suffixIcon: _nameController.text.isNotEmpty
+                ? IconButton(
+                    icon: const Icon(Icons.clear, size: 20),
+                    onPressed: () {
+                      _nameController.clear();
+                      setState(() {});
+                    },
+                  )
+                : null,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(
+                color: hasError ? Colors.red : Colors.grey.shade300,
+              ),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(
+                color: hasError ? Colors.red : Colors.grey.shade300,
+              ),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(
+                color: hasError ? Colors.red : primaryColor,
+              ),
+            ),
+            errorText: _nameValidated ? _nameError : null,
+          ),
+          keyboardType: TextInputType.name,
+          textInputAction: TextInputAction.next,
+          onChanged: (value) {
+            if (_nameValidated) _validateName();
+          },
+          onTap: () {
+            if (!_nameValidated) {
+              setState(() => _nameValidated = true);
+            }
+          },
+          onFieldSubmitted: (_) {
+            _nameValidated = true;
+            _validateName();
+            FocusScope.of(context).requestFocus(_passwordFocusNode);
+          },
+        ),
       ],
     );
   }
@@ -653,16 +759,12 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailFocusNode = FocusNode();
   final _passwordFocusNode = FocusNode();
 
-  String? _selectedRole;
-
   bool _isLoading = false;
   bool _obscurePassword = true;
 
-  String? _roleError;
   String? _emailError;
   String? _passwordError;
 
-  bool _roleValidated = false;
   bool _emailValidated = false;
   bool _passwordValidated = false;
 
@@ -680,15 +782,6 @@ class _LoginScreenState extends State<LoginScreen> {
     _emailFocusNode.dispose();
     _passwordFocusNode.dispose();
     super.dispose();
-  }
-
-  void _validateRole() {
-    if (!_roleValidated) return;
-    if (_selectedRole == null || _selectedRole!.isEmpty) {
-      _roleError = 'Please select your role';
-    } else {
-      _roleError = null;
-    }
   }
 
   void _validateEmail() {
@@ -717,16 +810,14 @@ class _LoginScreenState extends State<LoginScreen> {
 
   bool _validateAllFields() {
     setState(() {
-      _roleValidated = true;
       _emailValidated = true;
       _passwordValidated = true;
     });
 
-    _validateRole();
     _validateEmail();
     _validatePassword();
 
-    return _roleError == null && _emailError == null && _passwordError == null;
+    return _emailError == null && _passwordError == null;
   }
 
   void _navigateToVerificationScreen() {
@@ -873,23 +964,62 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
-    if (_selectedRole == null) {
-      setState(() {
-        _roleValidated = true;
-        _validateRole();
-      });
-      SnackBarUtil.showWarningMessage(context, 'Please select your role');
-      return;
-    }
-
     setState(() {
       _isLoading = true;
     });
 
     try {
-      SnackBarUtil.showSuccessMessage(context, 'Logged in successfully!');
+      final result = await ApiService().loginUser(
+        _emailController.text.trim(),
+        _passwordController.text,
+      );
+
+      if (result['statusCode'] == 200) {
+        final token = result['body']['access_token'];
+        final user = result['body']['user'];
+        final userRole = user['user_type'];
+
+        await AuthService().saveLoggedInData(
+          token: token,
+          role: userRole,
+          email: _emailController.text.trim(),
+        );
+
+        SnackBarUtil.showSuccessMessage(context, 'Logged in successfully!');
+
+        if (userRole == 'employee') {
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(
+              builder: (context) => EmployeeHomeScreen(initialLoggedIn: true),
+            ),
+            (route) => false,
+          );
+        } else if (userRole == 'employer') {
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (context) => EmployerHomeScreen()),
+            (route) => false,
+          );
+        }
+      } else if (result['statusCode'] == 401) {
+        SnackBarUtil.showErrorMessage(context, 'Invaid email or ppassword');
+      } else if (result['statusCode'] == 403) {
+        SnackBarUtil.showErrorMessage(
+          context,
+          'Your account has been deactivated. Please ontact support teams.',
+        );
+      } else {
+        SnackBarUtil.showErrorMessage(
+          context,
+          'Logged failed. Please try again.',
+        );
+      }
     } catch (e) {
-      SnackBarUtil.showErrorMessage(context, 'Login failed. Please try again.');
+      SnackBarUtil.showErrorMessage(
+        context,
+        'Something went wrong. Please try again.',
+      );
     } finally {
       setState(() {
         _isLoading = false;

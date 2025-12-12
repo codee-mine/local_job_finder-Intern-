@@ -1,50 +1,123 @@
 import 'package:flutter/material.dart';
+import 'package:local_job_finder/auth/api_service.dart';
+import 'package:local_job_finder/auth/auth_service.dart';
 import 'package:local_job_finder/Utilizes/toasts_messages.dart';
+import 'package:image_picker/image_picker.dart';
 
 class EmployerProfileScreen extends StatefulWidget {
-  const EmployerProfileScreen({super.key});
+  final EmployerUserProfile? userProfile;
+  final VoidCallback? onProfileUpdated;
+  const EmployerProfileScreen({
+    super.key,
+    this.userProfile,
+    this.onProfileUpdated,
+  });
 
   @override
   State<EmployerProfileScreen> createState() => _EmployerProfileScreenState();
 }
 
 class _EmployerProfileScreenState extends State<EmployerProfileScreen> {
-  final Map<String, dynamic> _profileData = {};
-  final bool _isLoading = true;
+  final ApiService _apiService = ApiService();
+  final AuthService _authService = AuthService();
+
+  EmployerUserProfile? _userProfile;
+  bool _isLoading = true;
   bool _isEditing = false;
 
   final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
-  final TextEditingController _locationController = TextEditingController();
-  final TextEditingController _websiteController = TextEditingController();
-  final TextEditingController _descriptionController = TextEditingController();
+  final TextEditingController _companyNameController = TextEditingController();
+  final TextEditingController _companyWebsiteController =
+      TextEditingController();
+  final TextEditingController _companySizeController = TextEditingController();
+  final TextEditingController _bioController = TextEditingController();
+  final TextEditingController _addressController = TextEditingController();
+  final TextEditingController _cityController = TextEditingController();
+  final TextEditingController _stateController = TextEditingController();
+  final TextEditingController _countryController = TextEditingController();
+  final TextEditingController _zipCodeController = TextEditingController();
 
   String? _nameError;
   String? _phoneError;
-  String? _locationError;
-  String? _websiteError;
-  String? _descriptionError;
+  String? _companyNameError;
+  String? _companyWebsiteError;
+  String? _companySizeError;
 
   bool _nameValidated = false;
   bool _phoneValidated = false;
-  bool _locationValidated = false;
-  bool _websiteValidated = false;
-  bool _descriptionValidated = false;
+  bool _companyNameValidated = false;
+  bool _companyWebsiteValidated = false;
+  bool _companySizeValidated = false;
 
   @override
   void initState() {
     super.initState();
+    if (widget.userProfile != null) {
+      _userProfile = widget.userProfile;
+      _populateFormFields();
+      _isLoading = false;
+    } else {
+      _loadProfileData();
+    }
+  }
+
+  Future<void> _loadProfileData() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final response = await _apiService.getUserProfile();
+
+      if (response['statusCode'] == 200) {
+        final userData = response['body'];
+        if (userData is Map<String, dynamic>) {
+          setState(() {
+            _userProfile = EmployerUserProfile.fromJson(userData);
+            _populateFormFields();
+          });
+        } else {
+          SnackBarUtil.showErrorMessage(context, 'Invalid profile data format');
+        }
+      } else {
+        final errorMessage =
+            response['body']['message'] ?? 'Failed to load profile';
+        SnackBarUtil.showErrorMessage(context, errorMessage);
+      }
+    } catch (e) {
+      SnackBarUtil.showErrorMessage(
+        context,
+        'Error loading profile: ${e.toString()}',
+      );
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  void _populateFormFields() {
+    if (_userProfile == null) return;
+
+    _nameController.text = _userProfile!.name;
+    _emailController.text = _userProfile!.email;
+    _phoneController.text = _userProfile!.phone ?? '';
+    _companyNameController.text = _userProfile!.companyName ?? '';
+    _companyWebsiteController.text = _userProfile!.companyWebsite ?? '';
+    _companySizeController.text = _userProfile!.companySize ?? '';
+    _bioController.text = _userProfile!.bio ?? '';
+    _addressController.text = _userProfile!.address ?? '';
   }
 
   void _validateName() {
     if (!_nameValidated) return;
     final value = _nameController.text.trim();
     if (value.isEmpty) {
-      _nameError = 'Please enter your full name';
+      _nameError = 'Please enter your name';
     } else if (value.length < 2) {
       _nameError = 'Name must be at least 2 characters long';
-    } else if (!RegExp(r'^[a-zA-Z\s]+$').hasMatch(value)) {
-      _nameError = 'Name can only contain letters and spaces';
     } else {
       _nameError = null;
     }
@@ -54,7 +127,8 @@ class _EmployerProfileScreenState extends State<EmployerProfileScreen> {
     if (!_phoneValidated) return;
     final value = _phoneController.text.trim();
     if (value.isEmpty) {
-      _phoneError = 'Please enter your phone number';
+      _phoneError = null;
+      return;
     } else if (!RegExp(r'^[0-9+\-\s()]{10,15}$').hasMatch(value)) {
       _phoneError = 'Please enter a valid phone number';
     } else {
@@ -62,111 +136,193 @@ class _EmployerProfileScreenState extends State<EmployerProfileScreen> {
     }
   }
 
-  void _validateLocation() {
-    if (!_locationValidated) return;
-    final value = _locationController.text.trim();
+  void _validateCompanyName() {
+    if (!_companyNameValidated) return;
+    final value = _companyNameController.text.trim();
     if (value.isEmpty) {
-      _locationError = 'Please enter your location';
+      _companyNameError = 'Please enter company name';
     } else if (value.length < 2) {
-      _locationError = 'Location must be at least 2 characters long';
+      _companyNameError = 'Company name must be at least 2 characters long';
     } else {
-      _locationError = null;
+      _companyNameError = null;
     }
   }
 
-  void _validatewebsite() {
-    if (!_websiteValidated) return;
-    final value = _websiteController.text.trim();
-    final urlPattern = r'^(https?:\/\/)?[\w\-]+(\.[\w\-]+)+[/#?]?.*$';
-    final regExp = RegExp(urlPattern);
+  void _validateCompanyWebsite() {
+    if (!_companyWebsiteValidated) return;
+    final value = _companyWebsiteController.text.trim();
     if (value.isEmpty) {
-      _websiteError = null;
+      _companyWebsiteError = null;
       return;
-    } else if (!regExp.hasMatch(value)) {
-      _websiteError = 'Please enter a valid website URL';
+    }
+
+    final urlPattern =
+        r'^(https?:\/\/)?([\w\-]+\.)+[\w\-]+(\/[\w\- .\/?%&=]*)?$';
+    final regExp = RegExp(urlPattern, caseSensitive: false);
+
+    if (!regExp.hasMatch(value)) {
+      _companyWebsiteError = 'Please enter a valid website URL';
     } else {
-      _websiteError = null;
+      _companyWebsiteError = null;
     }
   }
 
-  void _validateDescription() {
-    if (!_locationValidated) return;
-    final value = _descriptionController.text.trim();
+  void _validateCompanySize() {
+    if (!_companySizeValidated) return;
+    final value = _companySizeController.text.trim();
     if (value.isEmpty) {
-      _descriptionError = 'Please enter about your Company';
-    } else if (value.length < 2) {
-      _descriptionError = 'Description must be at least 100 characters long';
-    } else {
-      _descriptionError = null;
+      _companySizeError = null;
+      return;
     }
-  }
-
-  void _cancelEditing() {
-    setState(() {
-      _isEditing = false;
-
-      // Reset controllers to original values
-      _nameController.text = _profileData['fullName'] ?? '';
-      _phoneController.text = _profileData['phone'] ?? '';
-      _locationController.text = _profileData['location'] ?? '';
-      _websiteController.text = _profileData['website'] ?? '';
-      _descriptionController.text = _profileData['description'] ?? '';
-
-      // Reset validation states and errors
-      _nameValidated = false;
-      _phoneValidated = false;
-      _locationValidated = false;
-      _websiteValidated = false;
-      _descriptionValidated = false;
-      _nameError = null;
-      _phoneError = null;
-      _locationError = null;
-      _websiteError = null;
-      _descriptionError = null;
-    });
+    _companySizeError = null;
   }
 
   bool _validateAllFields() {
     setState(() {
       _nameValidated = true;
       _phoneValidated = true;
-      _locationValidated = true;
-      _websiteValidated = true;
-      _descriptionValidated = true;
+      _companyNameValidated = true;
+      _companyWebsiteValidated = true;
+      _companySizeValidated = true;
     });
 
     _validateName();
     _validatePhone();
-    _validateLocation();
-    _validatewebsite();
-    _validateDescription();
+    _validateCompanyName();
+    _validateCompanyWebsite();
+    _validateCompanySize();
 
     return _nameError == null &&
         _phoneError == null &&
-        _locationError == null &&
-        _websiteError == null &&
-        _descriptionError == null;
+        _companyNameError == null &&
+        _companyWebsiteError == null &&
+        _companySizeError == null;
   }
 
-  void _saveEditProfileData() {
+  void _cancelEditing() {
+    setState(() {
+      _isEditing = false;
+      _populateFormFields();
+
+      // Reset validation states
+      _nameValidated = false;
+      _phoneValidated = false;
+      _companyNameValidated = false;
+      _companyWebsiteValidated = false;
+      _companySizeValidated = false;
+      _nameError = null;
+      _phoneError = null;
+      _companyNameError = null;
+      _companyWebsiteError = null;
+      _companySizeError = null;
+    });
+  }
+
+  Future<void> _saveProfile() async {
     if (!_validateAllFields()) {
-      SnackBarUtil.showErrorMessage(context, 'Please fill all required fields');
+      SnackBarUtil.showErrorMessage(context, 'Please fix all errors');
       return;
     }
 
+    final fullAddress = [
+      if (_addressController.text.isNotEmpty) _addressController.text,
+      if (_cityController.text.isNotEmpty) _cityController.text,
+      if (_stateController.text.isNotEmpty) _stateController.text,
+      if (_countryController.text.isNotEmpty) _countryController.text,
+      if (_zipCodeController.text.isNotEmpty) _zipCodeController.text,
+    ];
+
+    final companyLocation = fullAddress.join(', ');
+
+    final updatedData = {
+      'name': _nameController.text.trim(),
+      'phone': _phoneController.text.trim(),
+      'company_name': _companyNameController.text.trim(),
+      'company_website': _companyWebsiteController.text.trim(),
+      'company_size': _companySizeController.text.trim(),
+      'bio': _bioController.text.trim(),
+      'address': _addressController.text.trim(),
+      'company_location': companyLocation,
+      'city': _cityController.text.trim(),
+      'state': _stateController.text.trim(),
+      'country': _countryController.text.trim(),
+      'zip_code': _zipCodeController.text.trim(),
+    };
+
     try {
-      SnackBarUtil.showSuccessMessage(context, 'Updated');
+      final response = await _apiService.updateUserProfile(updatedData);
+
+      if (response['statusCode'] == 200) {
+        SnackBarUtil.showSuccessMessage(
+          context,
+          'Profile updated successfully',
+        );
+        setState(() {
+          _isEditing = false;
+        });
+        await _loadProfileData();
+        if (widget.onProfileUpdated != null) {
+          widget.onProfileUpdated!();
+        }
+      } else {
+        final error = response['body']['message'] ?? 'Failed to update profile';
+        SnackBarUtil.showErrorMessage(context, error);
+      }
     } catch (e) {
-      SnackBarUtil.showErrorMessage(context, 'Update Failed');
+      SnackBarUtil.showErrorMessage(
+        context,
+        'Error updating profile: ${e.toString()}',
+      );
     }
   }
 
   Future<void> _refreshData() async {
-    SnackBarUtil.showInfoMessage(context, 'Refreshed');
+    await _loadProfileData();
+    SnackBarUtil.showInfoMessage(context, 'Profile refreshed');
+  }
+
+  Future<void> _uploadProfileImage() async {
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+
+    if (pickedFile != null) {
+      SnackBarUtil.showInfoMessage(context, 'Image upload feature coming soon');
+    }
+  }
+
+  void _showChangePasswordDialog() {
+    showDialog(context: context, builder: (context) => ChangePasswordDialog());
+  }
+
+  void _showDeleteConfirmation() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return DeleteAccountDialog(
+          onAccountDeleted: () async {
+            await _authService.deleteAccount();
+            Navigator.pushNamedAndRemoveUntil(
+              context,
+              '/login',
+              (route) => false,
+            );
+
+            SnackBarUtil.showSuccessMessage(
+              context,
+              'Account deleted Successfully',
+            );
+          },
+        );
+      },
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
     return Scaffold(
       body: SafeArea(
         child: RefreshIndicator(
@@ -191,28 +347,32 @@ class _EmployerProfileScreenState extends State<EmployerProfileScreen> {
 
   Widget _buildProfileHeader() {
     String getAvatarText() {
-      final name = _profileData['fullName']?.toString().trim();
+      final name = _userProfile?.name;
       if (name != null && name.isNotEmpty) {
         return name.substring(0, 1).toUpperCase();
       }
-      final email = _profileData['email']?.toString().trim();
+      final email = _userProfile?.email;
       if (email != null && email.isNotEmpty) {
         return email.substring(0, 1).toUpperCase();
       }
-      return 'U';
+      return 'E';
     }
 
     return Row(
       children: [
-        CircleAvatar(
-          radius: 40,
-          backgroundColor: Theme.of(context).primaryColor,
-          child: Text(
-            getAvatarText(),
-            style: const TextStyle(
-              fontSize: 24,
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
+        GestureDetector(
+          onTap: _uploadProfileImage,
+          child: CircleAvatar(
+            radius: 40,
+            backgroundColor: Theme.of(context).primaryColor,
+
+            child: Text(
+              getAvatarText(),
+              style: const TextStyle(
+                fontSize: 24,
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
         ),
@@ -220,59 +380,53 @@ class _EmployerProfileScreenState extends State<EmployerProfileScreen> {
         Expanded(
           child: Row(
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    _profileData['fullName'] ?? 'No Name',
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _userProfile?.companyName ??
+                          _userProfile?.name ??
+                          'No Name',
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Member Since: ${_formatTimestamp(_profileData['createdAt'])}',
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    _profileData['email'] ?? '',
-                    style: TextStyle(color: Colors.grey[600]),
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.verified,
-                        color: _profileData['emailVerified'] == true
-                            ? Colors.green
-                            : Colors.grey,
-                        size: 16,
-                      ),
-                      const SizedBox(width: 4),
+                    const SizedBox(height: 4),
+                    if (_userProfile?.createdAt != null) ...[
                       Text(
-                        _profileData['emailVerified'] == true
-                            ? 'Verified'
-                            : 'Not Verified',
-                        style: TextStyle(
-                          color: _profileData['emailVerified'] == true
-                              ? Colors.green
-                              : Colors.grey,
-                        ),
+                        'Member Since: ${_formatDate(_userProfile!.createdAt!)}',
+                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                       ),
+                      const SizedBox(height: 4),
                     ],
-                  ),
-                ],
-              ),
-              Spacer(),
-              TextButton(
-                onPressed: () {
-                  _showDeleteAccountDialog(context);
-                },
-                child: Text(
-                  'Delete Account',
-                  style: TextStyle(color: Colors.red),
+                    Text(
+                      _userProfile?.email ?? '',
+                      style: TextStyle(color: Colors.grey[600]),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    Chip(
+                      label: const Text('Employer'),
+                      backgroundColor: Theme.of(
+                        context,
+                      ).primaryColor.withOpacity(0.1),
+                      labelStyle: TextStyle(
+                        color: Theme.of(context).primaryColor,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
                 ),
+              ),
+              IconButton(
+                onPressed: _showDeleteConfirmation,
+                icon: const Icon(Icons.delete, color: Colors.red),
+                tooltip: 'Logout',
               ),
             ],
           ),
@@ -281,188 +435,53 @@ class _EmployerProfileScreenState extends State<EmployerProfileScreen> {
     );
   }
 
-  void _showDeleteAccountDialog(BuildContext context) {
-    final TextEditingController passwordController = TextEditingController();
-    final FocusNode passwordFocus = FocusNode();
-    bool isError = false;
-    String? passwordError;
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (dialogContext, setDialogState) {
-            void validatePassword(String value) {
-              setDialogState(() {
-                if (value.isEmpty) {
-                  passwordError = 'Password is required';
-                  isError = true;
-                } else if (value.length < 6) {
-                  passwordError = 'Password must be at least 6 characters';
-                  isError = true;
-                } else {
-                  passwordError = null;
-                  isError = false;
-                }
-              });
-            }
-
-            void deleteAccount() {
-              final password = passwordController.text.trim();
-
-              if (password.isEmpty) {
-                setDialogState(() {
-                  passwordError = 'Password is required';
-                  isError = true;
-                  passwordFocus.requestFocus();
-                });
-                return;
-              }
-
-              Navigator.pop(dialogContext);
-              SnackBarUtil.showSuccessMessage(
-                context,
-                'Account deletion request submitted',
-              );
-            }
-
-            return AlertDialog(
-              title: Text(
-                'Delete Account?',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.red),
-              ),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'Are you sure you want to delete your account? This action cannot be undone.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.grey.shade700),
-                  ),
-                  SizedBox(height: 20),
-                  TextFormField(
-                    controller: passwordController,
-                    focusNode: passwordFocus,
-                    obscureText: true,
-                    decoration: InputDecoration(
-                      labelText: 'Confirm your password',
-                      hintText: 'Enter your password',
-                      prefixIcon: Icon(Icons.lock_outline),
-                      suffixIcon: passwordController.text.isNotEmpty
-                          ? IconButton(
-                              onPressed: () {
-                                passwordController.clear();
-                                validatePassword('');
-                              },
-                              icon: Icon(Icons.clear),
-                            )
-                          : null,
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: BorderSide(color: Colors.grey.shade300),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: BorderSide(
-                          color: Theme.of(context).primaryColor,
-                        ),
-                      ),
-                      errorBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: BorderSide(color: Colors.red),
-                      ),
-                      focusedErrorBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: BorderSide(color: Colors.red),
-                      ),
-                      errorText: passwordError,
-                    ),
-                    onChanged: (value) {
-                      validatePassword(value);
-                    },
-                    onFieldSubmitted: (value) {
-                      if (!isError) {
-                        deleteAccount();
-                      }
-                    },
-                  ),
-                  SizedBox(height: 10),
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.warning_amber_outlined,
-                        size: 16,
-                        color: Colors.orange,
-                      ),
-                      SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'All your data will be permanently deleted',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.orange.shade700,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    passwordController.dispose();
-                    passwordFocus.dispose();
-                    Navigator.pop(dialogContext);
-                  },
-                  child: Text('Cancel'),
-                ),
-                TextButton(
-                  onPressed: isError ? null : deleteAccount,
-                  style: TextButton.styleFrom(
-                    foregroundColor: Colors.red,
-                    disabledForegroundColor: Colors.red.withValues(alpha: 0.5),
-                  ),
-                  child: Text('Delete Account'),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
-
   Widget _buildProfileInfo() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildInfoItem(
-          'Full Name',
-          _profileData['fullName'] ?? 'Not provided',
+          'Contact Person',
+          _userProfile?.name ?? 'Not provided',
           Icons.person,
         ),
         _buildInfoItem(
+          'Email',
+          _userProfile?.email ?? 'Not provided',
+          Icons.email,
+        ),
+        _buildInfoItem(
           'Phone',
-          _profileData['phone'] ?? 'Not provided',
+          _userProfile?.phone ?? 'Not provided',
           Icons.phone,
         ),
         _buildInfoItem(
-          'Location',
-          _profileData['location'] ?? 'Not provided',
-          Icons.location_on,
+          'Company Name',
+          _userProfile?.companyName ?? 'Not provided',
+          Icons.business,
         ),
         _buildInfoItem(
-          'website',
-          _profileData['website'] ?? 'Not provided',
+          'Company Location',
+          _userProfile?.companyLocation ?? 'Not provided',
+          Icons.business,
+        ),
+        _buildInfoItem(
+          'Website',
+          _userProfile?.companyWebsite ?? 'Not provided',
           Icons.public,
         ),
         _buildInfoItem(
-          'Description',
-          _profileData['description'] ?? 'Not provided',
-          Icons.description,
+          'Company Size',
+          _userProfile?.companySize ?? 'Not provided',
+          Icons.people,
         ),
+        _buildInfoItem(
+          'Address',
+          _userProfile?.address ?? 'Not provided',
+          Icons.location_on,
+        ),
+
+        if (_userProfile?.bio != null && _userProfile!.bio!.isNotEmpty)
+          _buildInfoItem('Company Bio', _userProfile!.bio!, Icons.description),
       ],
     );
   }
@@ -471,7 +490,7 @@ class _EmployerProfileScreenState extends State<EmployerProfileScreen> {
     return Column(
       children: [
         _buildEditField(
-          'Full Name *',
+          'Contact Person *',
           _nameController,
           Icons.person,
           _nameError,
@@ -485,9 +504,18 @@ class _EmployerProfileScreenState extends State<EmployerProfileScreen> {
             }
           },
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
         _buildEditField(
-          'Phone Number *',
+          'Email',
+          _emailController,
+          Icons.email,
+          null,
+          false,
+          enabled: false,
+        ),
+        const SizedBox(height: 12),
+        _buildEditField(
+          'Phone',
           _phoneController,
           Icons.phone,
           _phoneError,
@@ -502,55 +530,94 @@ class _EmployerProfileScreenState extends State<EmployerProfileScreen> {
           },
           keyboardType: TextInputType.phone,
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
         _buildEditField(
-          'Location *',
-          _locationController,
-          Icons.location_on,
-          _locationError,
-          _locationValidated,
+          'Company Name *',
+          _companyNameController,
+          Icons.business,
+          _companyNameError,
+          _companyNameValidated,
           onChanged: (value) {
-            if (_locationValidated) _validateLocation();
+            if (_companyNameValidated) _validateCompanyName();
           },
           onTap: () {
-            if (!_locationValidated) {
-              setState(() => _locationValidated = true);
+            if (!_companyNameValidated) {
+              setState(() => _companyNameValidated = true);
             }
           },
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
         _buildEditField(
-          'Website URL',
-          _websiteController,
+          'Website',
+          _companyWebsiteController,
           Icons.public,
-          _websiteError,
-          _websiteValidated,
+          _companyWebsiteError,
+          _companyWebsiteValidated,
           onChanged: (value) {
-            if (_websiteValidated) _validatewebsite();
+            if (_companyWebsiteValidated) _validateCompanyWebsite();
           },
           onTap: () {
-            if (!_websiteValidated) {
-              setState(() => _websiteValidated = true);
+            if (!_companyWebsiteValidated) {
+              setState(() => _companyWebsiteValidated = true);
             }
           },
         ),
-
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
         _buildEditField(
-          'Description',
-          _descriptionController,
-          Icons.description,
-          _descriptionError,
-          _descriptionValidated,
+          'Company Size',
+          _companySizeController,
+          Icons.people,
+          _companySizeError,
+          _companySizeValidated,
           onChanged: (value) {
-            if (_descriptionValidated) _validateDescription();
+            if (_companySizeValidated) _validateCompanySize();
           },
           onTap: () {
-            if (!_descriptionValidated) {
-              setState(() => _descriptionValidated = true);
+            if (!_companySizeValidated) {
+              setState(() => _companySizeValidated = true);
             }
           },
-          maxLines: 5,
+          hintText: 'e.g., 1-10, 11-50, 51-200, 201-500, 500+',
+        ),
+        const SizedBox(height: 12),
+        _buildEditField(
+          'Address',
+          _addressController,
+          Icons.location_on,
+          null,
+          false,
+          maxLines: 2,
+        ),
+        const SizedBox(height: 12),
+        _buildEditField(
+          'City',
+          _cityController,
+          Icons.location_city,
+          null,
+          false,
+        ),
+        const SizedBox(height: 12),
+        _buildEditField('State', _stateController, Icons.map, null, false),
+        const SizedBox(height: 12),
+        _buildEditField('Country', _countryController, Icons.flag, null, false),
+        const SizedBox(height: 12),
+        _buildEditField(
+          'ZIP Code',
+          _zipCodeController,
+          Icons.numbers,
+          null,
+          false,
+          keyboardType: TextInputType.number,
+        ),
+        const SizedBox(height: 12),
+        _buildEditField(
+          'Company Bio',
+          _bioController,
+          Icons.description,
+          null,
+          false,
+          maxLines: 4,
+          hintText: 'Tell us about your company...',
         ),
       ],
     );
@@ -562,7 +629,7 @@ class _EmployerProfileScreenState extends State<EmployerProfileScreen> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 20, color: Colors.grey),
+          Icon(icon, size: 20, color: Colors.grey.shade600),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -570,10 +637,16 @@ class _EmployerProfileScreenState extends State<EmployerProfileScreen> {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w500,
+                    fontSize: 14,
+                  ),
                 ),
                 const SizedBox(height: 4),
-                Text(value, style: TextStyle(color: Colors.grey[700])),
+                Text(
+                  value,
+                  style: TextStyle(color: Colors.grey[700], fontSize: 15),
+                ),
               ],
             ),
           ),
@@ -588,8 +661,10 @@ class _EmployerProfileScreenState extends State<EmployerProfileScreen> {
     IconData icon,
     String? error,
     bool validated, {
+    bool enabled = true,
     TextInputType keyboardType = TextInputType.text,
     int maxLines = 1,
+    String? hintText,
     ValueChanged<String>? onChanged,
     VoidCallback? onTap,
   }) {
@@ -607,17 +682,20 @@ class _EmployerProfileScreenState extends State<EmployerProfileScreen> {
             color: Colors.black87,
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 6),
         TextFormField(
           controller: controller,
-          validator: (value) {
-            if (value == null || value.isEmpty) {
-              return 'This field is required';
-            }
-            return null;
-          },
+          enabled: enabled,
           decoration: InputDecoration(
             prefixIcon: Icon(icon),
+            suffixIcon: controller.text.isNotEmpty
+                ? IconButton(
+                    onPressed: () {
+                      controller.clear();
+                    },
+                    icon: Icon(Icons.clear),
+                  )
+                : null,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
               borderSide: BorderSide(
@@ -638,6 +716,9 @@ class _EmployerProfileScreenState extends State<EmployerProfileScreen> {
             ),
             errorText: validated ? error : null,
             errorMaxLines: 2,
+            hintText: hintText,
+            filled: !enabled,
+            fillColor: !enabled ? Colors.grey.shade100 : null,
           ),
           keyboardType: keyboardType,
           maxLines: maxLines,
@@ -649,47 +730,444 @@ class _EmployerProfileScreenState extends State<EmployerProfileScreen> {
   }
 
   Widget _buildActionButtons() {
-    return Row(
+    return Column(
       children: [
-        Expanded(
-          child: ElevatedButton(
-            onPressed: () {
-              if (_isEditing) {
-                _saveEditProfileData();
-              } else {
-                setState(() {
-                  _isEditing = true;
-                });
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Theme.of(context).primaryColor,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 12),
+        Row(
+          children: [
+            Expanded(
+              child: ElevatedButton(
+                onPressed: () {
+                  if (_isEditing) {
+                    _saveProfile();
+                  } else {
+                    setState(() {
+                      _isEditing = true;
+                    });
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Theme.of(context).primaryColor,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                child: Text(
+                  _isEditing ? 'Save Changes' : 'Edit Profile',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
             ),
-            child: Text(_isEditing ? 'Save Changes' : 'Edit Profile'),
-          ),
+            if (_isEditing) ...[
+              const SizedBox(width: 12),
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: _cancelEditing,
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    side: BorderSide(color: Colors.grey.shade400),
+                  ),
+                  child: const Text('Cancel'),
+                ),
+              ),
+            ],
+          ],
         ),
-        if (_isEditing) ...[
-          const SizedBox(width: 12),
-          Expanded(
-            child: OutlinedButton(
-              onPressed: _cancelEditing,
-              child: const Text('Cancel'),
-            ),
-          ),
-        ],
+        const SizedBox(height: 16),
+        TextButton(
+          onPressed: _showChangePasswordDialog,
+          child: const Text('Change Password'),
+        ),
       ],
     );
   }
 
-  String _formatTimestamp(dynamic timestamp) {
-    if (timestamp == null) return 'Unknown';
-    try {
-      final date = DateTime.fromMillisecondsSinceEpoch(timestamp as int);
-      return '${date.day}/${date.month}/${date.year}';
-    } catch (e) {
-      return 'Unknown';
+  String _formatDate(DateTime date) {
+    return '${date.day}/${date.month}/${date.year}';
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _emailController.dispose();
+    _phoneController.dispose();
+    _companyNameController.dispose();
+    _companyWebsiteController.dispose();
+    _companySizeController.dispose();
+    _bioController.dispose();
+    _addressController.dispose();
+    _cityController.dispose();
+    _stateController.dispose();
+    _countryController.dispose();
+    _zipCodeController.dispose();
+    super.dispose();
+  }
+}
+
+class ChangePasswordDialog extends StatefulWidget {
+  const ChangePasswordDialog({super.key});
+
+  @override
+  State<ChangePasswordDialog> createState() => _ChangePasswordDialogState();
+}
+
+class _ChangePasswordDialogState extends State<ChangePasswordDialog> {
+  final ApiService _apiService = ApiService();
+  final TextEditingController _currentPasswordController =
+      TextEditingController();
+  final TextEditingController _newPasswordController = TextEditingController();
+  final TextEditingController _confirmPasswordController =
+      TextEditingController();
+
+  bool _obscureCurrent = true;
+  bool _obscureNew = true;
+  bool _obscureConfirm = true;
+  bool _isLoading = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Change Password'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextFormField(
+              controller: _currentPasswordController,
+              obscureText: _obscureCurrent,
+              decoration: InputDecoration(
+                labelText: 'Current Password',
+                suffixIcon: IconButton(
+                  icon: Icon(
+                    _obscureCurrent ? Icons.visibility_off : Icons.visibility,
+                  ),
+                  onPressed: () {
+                    setState(() {
+                      _obscureCurrent = !_obscureCurrent;
+                    });
+                  },
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _newPasswordController,
+              obscureText: _obscureNew,
+              decoration: InputDecoration(
+                labelText: 'New Password',
+                suffixIcon: IconButton(
+                  icon: Icon(
+                    _obscureNew ? Icons.visibility_off : Icons.visibility,
+                  ),
+                  onPressed: () {
+                    setState(() {
+                      _obscureNew = !_obscureNew;
+                    });
+                  },
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _confirmPasswordController,
+              obscureText: _obscureConfirm,
+              decoration: InputDecoration(
+                labelText: 'Confirm New Password',
+                suffixIcon: IconButton(
+                  icon: Icon(
+                    _obscureConfirm ? Icons.visibility_off : Icons.visibility,
+                  ),
+                  onPressed: () {
+                    setState(() {
+                      _obscureConfirm = !_obscureConfirm;
+                    });
+                  },
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _isLoading ? null : () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        ElevatedButton(
+          onPressed: _isLoading ? null : _changePassword,
+          child: _isLoading
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Text('Change Password'),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _changePassword() async {
+    final currentPassword = _currentPasswordController.text;
+    final newPassword = _newPasswordController.text;
+    final confirmPassword = _confirmPasswordController.text;
+
+    if (currentPassword.isEmpty ||
+        newPassword.isEmpty ||
+        confirmPassword.isEmpty) {
+      SnackBarUtil.showErrorMessage(context, 'Please fill all fields');
+      return;
     }
+
+    if (newPassword != confirmPassword) {
+      SnackBarUtil.showErrorMessage(context, 'Passwords do not match');
+      return;
+    }
+
+    if (newPassword.length < 8) {
+      SnackBarUtil.showErrorMessage(
+        context,
+        'Password must be at least 8 characters',
+      );
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final response = await _apiService.changePassword(
+        currentPassword,
+        newPassword,
+      );
+
+      if (response['statusCode'] == 200) {
+        SnackBarUtil.showSuccessMessage(
+          context,
+          'Password changed successfully',
+        );
+        Navigator.pop(context);
+      } else {
+        final error =
+            response['body']['message'] ?? 'Failed to change password';
+        SnackBarUtil.showErrorMessage(context, error);
+      }
+    } catch (e) {
+      SnackBarUtil.showErrorMessage(context, 'Error: ${e.toString()}');
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _currentPasswordController.dispose();
+    _newPasswordController.dispose();
+    _confirmPasswordController.dispose();
+    super.dispose();
+  }
+}
+
+class DeleteAccountDialog extends StatefulWidget {
+  final VoidCallback onAccountDeleted;
+  const DeleteAccountDialog({super.key, required this.onAccountDeleted});
+
+  @override
+  State<DeleteAccountDialog> createState() => _DeleteAccountDialogState();
+}
+
+class _DeleteAccountDialogState extends State<DeleteAccountDialog> {
+  final ApiService _apiService = ApiService();
+  final TextEditingController _passwordController = TextEditingController();
+  final FocusNode _passwordFocus = FocusNode();
+  bool _isLoading = false;
+  bool _obscurePassword = true;
+  String? _passwordError;
+
+  @override
+  void dispose() {
+    _passwordController.dispose();
+    _passwordFocus.dispose();
+    super.dispose();
+  }
+
+  Future<void> _deleteAccount() async {
+    final password = _passwordController.text.trim();
+
+    if (password.isEmpty) {
+      setState(() {
+        _passwordError = 'Password is required';
+      });
+      _passwordFocus.requestFocus();
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _passwordError = null;
+    });
+
+    try {
+      final response = await _apiService.deleteAccount(password);
+
+      if (response['statusCode'] == 200) {
+        if (mounted) {
+          Navigator.pop(context);
+          widget.onAccountDeleted();
+        }
+      } else if (response['statusCode'] == 401) {
+        setState(() {
+          _passwordError = 'Incorrect password';
+          _passwordFocus.requestFocus();
+        });
+      } else {
+        final error = response['body']['message'] ?? 'Failed to delete account';
+        if (mounted) {
+          SnackBarUtil.showErrorMessage(context, error);
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        SnackBarUtil.showErrorMessage(
+          context,
+          'Network error. Please try again.',
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text(
+        'Delete Account',
+        textAlign: TextAlign.center,
+        style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+      ),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.warning_amber_rounded,
+              size: 60,
+              color: Colors.red,
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'This action cannot be undone!',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'All your data, including profile, jobs, and applications will be permanently deleted.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.grey),
+            ),
+            const SizedBox(height: 20),
+            TextFormField(
+              controller: _passwordController,
+              focusNode: _passwordFocus,
+              obscureText: _obscurePassword,
+              decoration: InputDecoration(
+                labelText: 'Confirm Password',
+                hintText: 'Enter your password',
+                prefixIcon: const Icon(Icons.lock_outline),
+                suffixIcon: IconButton(
+                  onPressed: () {
+                    setState(() {
+                      _obscurePassword = !_obscurePassword;
+                    });
+                  },
+                  icon: Icon(
+                    _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                  ),
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                errorText: _passwordError,
+              ),
+              onChanged: (value) {
+                if (_passwordError != null) {
+                  setState(() {
+                    _passwordError = null;
+                  });
+                }
+              },
+              onFieldSubmitted: (_) {
+                if (!_isLoading) {
+                  _deleteAccount();
+                }
+              },
+            ),
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.red.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.red.shade100),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.info_outline, size: 20, color: Colors.red),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'After deletion, you cannot recover your account or data.',
+                      style: TextStyle(fontSize: 12, color: Colors.red),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _isLoading ? null : () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        ElevatedButton(
+          onPressed: _isLoading ? null : _deleteAccount,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.red,
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+          child: _isLoading
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
+              : const Text('Delete Account'),
+        ),
+      ],
+    );
   }
 }

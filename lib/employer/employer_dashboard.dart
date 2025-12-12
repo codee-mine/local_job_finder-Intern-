@@ -2,6 +2,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:local_job_finder/Utilizes/internet_check.dart';
 import 'package:local_job_finder/Utilizes/toasts_messages.dart';
+import 'package:local_job_finder/auth/api_service.dart';
+import 'package:local_job_finder/auth/auth_service.dart';
 import 'package:local_job_finder/employee/employee_dashboard.dart';
 import 'package:local_job_finder/employer/employer_add_and_edit_job.dart';
 import 'package:local_job_finder/employer/employer_job.dart';
@@ -11,21 +13,72 @@ import 'package:local_job_finder/employer/employer_profile.dart';
 class EmployerHomeScreen extends StatefulWidget {
   final int index;
   final int? highlightJobId;
-  const EmployerHomeScreen({super.key, this.index = 1, this.highlightJobId});
+  final VoidCallback? loadPofileData;
+  const EmployerHomeScreen({
+    super.key,
+    this.index = 1,
+    this.highlightJobId,
+    this.loadPofileData,
+  });
 
   @override
   State<EmployerHomeScreen> createState() => _EmployerHomeScreenState();
 }
 
 class _EmployerHomeScreenState extends State<EmployerHomeScreen> {
+  final ApiService _apiService = ApiService();
+  final AuthService _authService = AuthService();
+
+  EmployerUserProfile? _userProfile;
   int _currentIndex = 1;
   int? _highlightedJobId;
+  bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
     _currentIndex = widget.index;
     _highlightedJobId = widget.highlightJobId;
+    _loadEmployerProfile();
+  }
+
+  Future<void> _loadEmployerProfile() async {
+    setState(() {
+      _isLoading = true;
+    });
+    try {
+      final response = await _apiService.getUserProfile();
+
+      if (response['statusCode'] == 200) {
+        final userData = response['body']['data'] ?? response['body'];
+        setState(() {
+          _userProfile = EmployerUserProfile.fromJson(userData);
+        });
+      } else {
+        SnackBarUtil.showErrorMessage(context, 'Failed to load profile');
+      }
+    } catch (e) {
+      SnackBarUtil.showErrorMessage(
+        context,
+        'Failed to load profile: ${e.toString()}',
+      );
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _logout() async {
+    await _authService.logout();
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(
+        builder: (context) => EmployeeHomeScreen(initialLoggedIn: false),
+      ),
+      (route) => false,
+    );
+    SnackBarUtil.showSuccessMessage(context, 'Logged out Successfully');
   }
 
   @override
@@ -37,17 +90,6 @@ class _EmployerHomeScreenState extends State<EmployerHomeScreen> {
     setState(() {
       _currentIndex = index;
     });
-  }
-
-  Future<void> _logout() async {
-    SnackBarUtil.showSuccessMessage(context, 'Logged out successfully');
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(
-        builder: (context) => EmployeeHomeScreen(initialLoggedIn: false),
-      ),
-      (route) => false,
-    );
   }
 
   String _getAppBarTitle() {
@@ -161,7 +203,10 @@ class _EmployerHomeScreenState extends State<EmployerHomeScreen> {
   }
 
   Widget _buildProfileTab() {
-    return EmployerProfileScreen();
+    return EmployerProfileScreen(
+      userProfile: _userProfile,
+      onProfileUpdated: _loadEmployerProfile,
+    );
   }
 }
 

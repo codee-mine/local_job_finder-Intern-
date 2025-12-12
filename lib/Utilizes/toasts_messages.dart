@@ -1,4 +1,3 @@
-// SnackBar Utility
 import 'package:flutter/material.dart';
 
 class SnackBarUtil {
